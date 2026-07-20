@@ -1,0 +1,75 @@
+default_target: imx95-frdm
+supported_targets:
+  - imx95-frdm
+
+extensions:
+  avocado-bsp-imx95-frdm:
+    version: 0.1.0
+    release: r0
+    summary: Board support for the i.MX 95 FRDM
+    description: Board support for the i.MX 95 FRDM
+    license: Apache-2.0
+    url: https://github.com/avocadolinux/avocado-os
+    vendor: Avocado Linux <info@avocadolinux.org>
+
+    # Autoload the NXP IW612 WiFi driver. moal has no DT/udev alias, so the
+    # SDIO card enumerates (mmc2) but the driver never binds unless forced.
+    # btnxpuart autoloads from its UART DT node, so it is not listed here.
+    modprobe:
+      - moal
+
+    on_merge:
+      - udevadm control --reload
+      - udevadm trigger --type=subsystems --action=add --settle
+      - udevadm trigger --type=devices --action=add --settle
+
+    packages:
+      # Scoped to the modules actually loaded on the i.MX 95 FRDM (lsmod on a
+      # booted board), instead of pulling the whole kernel-modules metapackage.
+      # --- Audio / Sound (SAI + MICFIL DMIC + MQS, fsl-asoc imx-card) ---
+      kernel-module-snd-soc-fsl-sai: '*'
+      kernel-module-snd-soc-fsl-micfil: '*'
+      kernel-module-snd-soc-fsl-mqs: '*'
+      kernel-module-snd-soc-fsl-utils: '*'
+      kernel-module-snd-soc-imx-card: '*'
+      kernel-module-imx-pcm-dma: '*'
+      # --- Media / JPEG (i.MX hardware JPEG codec) ---
+      kernel-module-mxc-jpeg-encdec: '*'
+      kernel-module-v4l2-jpeg: '*'
+      # --- CAN bus (FlexCAN) ---
+      kernel-module-flexcan: '*'
+      kernel-module-can-dev: '*'
+      # --- Bluetooth (NXP UART HCI) ---
+      kernel-module-btnxpuart: '*'
+      kernel-module-bluetooth: '*'
+      kernel-module-rfkill: '*'
+      # --- Crypto (ARMv8 CE accelerators) ---
+      kernel-module-crct10dif-ce: '*'
+      kernel-module-polyval-ce: '*'
+      kernel-module-polyval-generic: '*'
+      # --- RPMsg (Cortex-M / remoteproc IPC) ---
+      kernel-module-rpmsg-ctrl: '*'
+      kernel-module-rpmsg-char: '*'
+      # --- Filesystems / Block ---
+      kernel-module-fuse: '*'
+      kernel-module-dm-mod: '*'
+      # --- NFS (required by avocado-hitl / nfs-utils) ---
+      kernel-module-nfsd: '*'
+      # --- WiFi + Bluetooth (onboard NXP IW612 combo, SDIO WiFi + UART BT) ---
+      # btnxpuart is already loaded; the -110 BT init timeouts and the unbound
+      # mmc2 SDIO card are both a missing-firmware problem: /lib/firmware is
+      # absent on the board, so the driver's request for nxp/uartspi_n61x_v1.bin.se
+      # fails. firmware-nxp-wifi-nxpiw612-sdio ships that BT blob plus the WiFi
+      # SDIO firmware (sduart_nw61x_v1 / sd_w61x_v1). moal/mlan are the WiFi driver.
+      kernel-module-moal: '*'
+      kernel-module-mlan: '*'
+      firmware-nxp-wifi-nxpiw612-sdio: '*'
+      wireless-regdb-static: '*'
+      # --- Compression / zram ---
+      kernel-module-zram: '*'
+      kernel-module-zsmalloc: '*'
+      kernel-module-lz4: '*'
+      kernel-module-lz4-compress: '*'
+
+sdk:
+  image: docker.io/avocadolinux/sdk:{{ env.AVOCADO_DISTRO_RELEASE }}
