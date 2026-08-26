@@ -44,7 +44,6 @@ extensions:
       kernel-module-bluetooth: '*'
       kernel-module-rfkill: '*'
       # --- Crypto (ARMv8 CE accelerators) ---
-      kernel-module-crct10dif-ce: '*'
       kernel-module-polyval-ce: '*'
       kernel-module-polyval-generic: '*'
       # --- RPMsg (Cortex-M / remoteproc IPC) ---
@@ -70,6 +69,17 @@ extensions:
       kernel-module-zsmalloc: '*'
       kernel-module-lz4: '*'
       kernel-module-lz4-compress: '*'
+
+    # Per-kernel packages, same shape as the imx8mp-evk BSP: avocado-cli picks
+    # the kernel-<version> block matching the feed's kernel at install time.
+    #
+    # 2024 feed (linux-imx 6.6): the arm64 CRC-T10DIF accelerator is a module.
+    # 2026 feed (linux-imx 6.18): it is not -- CONFIG_CRC_T10DIF(_ARCH)=y, the
+    # acceleration lives in lib/crc -- so listing it there fails the install with
+    # "No match for argument: kernel-module-crct10dif-ce".
+    kernel-6.6.*:
+      packages:
+        kernel-module-crct10dif-ce: '*'
 
 sdk:
   image: docker.io/avocadolinux/sdk:{{ env.AVOCADO_DISTRO_RELEASE }}
