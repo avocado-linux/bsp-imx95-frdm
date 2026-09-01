@@ -4,7 +4,7 @@ supported_targets:
 
 extensions:
   avocado-bsp-imx95-frdm:
-    version: 0.1.0
+    version: 0.1.1
     release: r0
     summary: Board support for the i.MX 95 FRDM
     description: Board support for the i.MX 95 FRDM
