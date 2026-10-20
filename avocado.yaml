@@ -81,5 +81,52 @@ extensions:
       packages:
         kernel-module-crct10dif-ce: '*'
 
+# Driven by a Rubicon: the power relay on the AC side of the USB-C PD adapter
+# feeding J25 (SW5 left on), ssr1 across SW1-1 (BOOT_MODE1), ssr2 across SW1-2
+# (BOOT_MODE0), SW1 itself all off. J3 (USB download port) and the J1 debug
+# port (WCH multi-UART 1a86:55d5, the console) on the Rubicon's USB through a
+# small hub.
+rubicon:
+  run:
+    imx95-power-off:
+      - out: { power: "off" }
+    imx95-power-on:
+      - out: { power: "on" }
+    # SW1-1/SW1-2 (BOOT_MODE1/0): 11 microSD, 10 eMMC, 01 USB serial download.
+    # 00 (no relay closed) and an unbootable card also land in serial
+    # download, so reaching serial download proves nothing about the wiring.
+    imx95-boot-sd:
+      - out: { ssr1: "on", ssr2: "on" }
+    imx95-boot-emmc:
+      - out: { ssr1: "on", ssr2: "off" }
+    imx95-boot-serial-download:
+      - out: { ssr1: "off", ssr2: "on" }
+    # Before the uuu-emmc profile: the board power-cycled into USB serial
+    # download. The ROM reads the boot mode only at power-up; 5 s off drains
+    # the PD brick. Hold every id the flash goes through: the ROM (1fc9:015d),
+    # an SPL streaming U-Boot over SDP (1fc9:0151) and U-Boot's fastboot
+    # (1fc9:0152). Not "*": the console chip shares the Rubicon's USB port.
+    imx95-enter-serial-download:
+      - run: imx95-power-off
+      - run: imx95-boot-serial-download
+      - wait_ms: 5000
+      - run: imx95-power-on
+      - hold_usb: ["1fc9:015d", "1fc9:0151", "1fc9:0152"]
+      - wait_usb: { id: "1fc9:015d", timeout_s: 30 }
+    # After it, or to boot whatever is installed: eMMC, power-cycled.
+    imx95-emmc-boot:
+      - run: imx95-power-off
+      - run: imx95-boot-emmc
+      - wait_ms: 5000
+      - run: imx95-power-on
+    # Proves ssr1 and the eMMC: the SPL must name MMC1 (usdhc1, eMMC).
+    imx95-check-emmc:
+      - run: imx95-emmc-boot
+      - console_expect: { markers: ["Trying to boot from MMC1"], timeout_s: 60 }
+
+provision:
+  uuu-emmc:
+    rubicon: { before: imx95-enter-serial-download, after: imx95-emmc-boot }
+
 sdk:
   image: docker.io/avocadolinux/sdk:{{ env.AVOCADO_DISTRO_RELEASE }}
